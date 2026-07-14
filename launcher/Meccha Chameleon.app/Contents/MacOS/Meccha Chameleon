@@ -4,6 +4,7 @@ CONTENTS=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 WRAPPER=$(/bin/cat "$CONTENTS/Resources/wrapper-path" 2>/dev/null)
 LAUNCHER="$WRAPPER/Contents/MacOS/Sikarugir"
 SHIPPING_EXE="$WRAPPER/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/steamapps/common/MECCHA CHAMELEON/Chameleon/Binaries/Win64/PenguinHotel-Win64-Shipping.exe"
+CONNECTION_LOG="$WRAPPER/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/logs/connection_log.txt"
 STEAM_PATTERN='C:\\Program Files \(x86\)\\Steam\\steam\.exe'
 
 if [ ! -x "$LAUNCHER" ] || [ ! -f "$SHIPPING_EXE" ]; then
@@ -11,8 +12,24 @@ if [ ! -x "$LAUNCHER" ] || [ ! -f "$SHIPPING_EXE" ]; then
   exit 1
 fi
 
+steam_logged_on() {
+  [ -f "$CONNECTION_LOG" ] &&
+    /usr/bin/tail -n 200 "$CONNECTION_LOG" 2>/dev/null |
+      /usr/bin/grep -E '\] \[(Logged On|Logged Off|Logging On),' |
+      /usr/bin/tail -n 1 |
+      /usr/bin/grep -q '] \[Logged On,'
+}
+
+STARTED_STEAM=0
+LOG_LINES=0
+
 if ! /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1; then
+  if [ -f "$CONNECTION_LOG" ]; then
+    LOG_LINES=$(/usr/bin/wc -l <"$CONNECTION_LOG" | /usr/bin/tr -d ' ')
+  fi
+
   /usr/bin/open "$WRAPPER"
+  STARTED_STEAM=1
 
   ATTEMPTS=0
   while ! /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1; do
@@ -23,10 +40,36 @@ if ! /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1; then
       exit 1
     fi
   done
-
-  # Give Steam time to finish login and initialize Steamworks on a cold start.
-  /bin/sleep 5
 fi
+
+ATTEMPTS=0
+while :; do
+  if [ "$STARTED_STEAM" -eq 1 ]; then
+    CURRENT_LINES=0
+    if [ -f "$CONNECTION_LOG" ]; then
+      CURRENT_LINES=$(/usr/bin/wc -l <"$CONNECTION_LOG" | /usr/bin/tr -d ' ')
+    fi
+    if [ "$CURRENT_LINES" -lt "$LOG_LINES" ]; then
+      LOG_LINES=0
+    fi
+    if [ "$CURRENT_LINES" -gt "$LOG_LINES" ] &&
+       /usr/bin/tail -n "+$((LOG_LINES + 1))" "$CONNECTION_LOG" |
+         /usr/bin/grep -E '\] \[(Logged On|Logged Off|Logging On),' |
+         /usr/bin/tail -n 1 |
+         /usr/bin/grep -q '] \[Logged On,'; then
+      break
+    fi
+  elif steam_logged_on; then
+    break
+  fi
+
+  /bin/sleep 1
+  ATTEMPTS=$((ATTEMPTS + 1))
+  if [ "$ATTEMPTS" -ge 120 ]; then
+    /usr/bin/logger -t meccha-chameleon "Steam did not log on within 120 seconds"
+    exit 1
+  fi
+done
 
 export SteamAppId=4704690
 export SteamGameId=4704690

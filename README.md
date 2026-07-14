@@ -33,9 +33,10 @@ Direct3D 12 and Shader Model 6.
 - Steam's normal launch target is a 222 KB Unreal bootstrapper. Under Wine it
   can incorrectly report that Visual C++ is missing even after Steam installs
   both VC++ 2022 redistributables successfully.
-- The native launcher starts Steam, waits for it, then runs the real shipping
-  executable with Steam app ID 4704690. This bypasses the faulty prerequisite
-  check while preserving Steamworks and D3DMetal.
+- The native launcher starts Steam, waits until the current session is logged
+  on, then runs the real shipping executable with Steam app ID 4704690. This
+  bypasses the faulty prerequisite check while preserving Steam authentication,
+  Steamworks, and D3DMetal.
 
 ## Install
 
@@ -89,7 +90,7 @@ Windows Steam games.
 
 Double-click that app or place it in the Dock. Bun, Node, TypeScript, and a
 Terminal window are not required to play. On a cold launch, it opens Windows
-Steam first and waits briefly before starting Meccha.
+Steam first and waits for Steam to finish logging in before starting Meccha.
 
 ## Diagnose the installation
 
