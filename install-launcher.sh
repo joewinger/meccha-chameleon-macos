@@ -5,13 +5,12 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 TEMPLATE="$ROOT/launcher/Meccha Chameleon.app"
 WRAPPER=${SIKARUGIR_WRAPPER:-"$HOME/Applications/Sikarugir/Meccha Chameleon Test.app"}
-CUSTOM_APP="$WRAPPER/Contents/Meccha Chameleon.app"
-CUSTOM_INFO="$CUSTOM_APP/Contents/Info.plist.cexe"
+WRAPPER_INFO="$WRAPPER/Contents/Info.plist"
+ICON="$WRAPPER/Contents/Configure.app/Contents/Resources/Configure.icns"
 DESTINATION=${MECCHA_APP_DESTINATION:-"$HOME/Applications/Meccha Chameleon.app"}
 
-if [ ! -f "$CUSTOM_INFO" ]; then
-  printf 'Missing Sikarugir child launcher: %s\n' "$CUSTOM_INFO" >&2
-  printf 'Create it first with Configure -> Tools -> Custom EXE Creator.\n' >&2
+if [ ! -x "$WRAPPER/Contents/MacOS/Sikarugir" ] || [ ! -f "$ICON" ]; then
+  printf 'Incomplete Sikarugir wrapper: %s\n' "$WRAPPER" >&2
   exit 1
 fi
 
@@ -21,14 +20,12 @@ if [ -e "$DESTINATION" ] || [ -L "$DESTINATION" ]; then
 fi
 
 /usr/bin/plutil -replace 'Program Name and Path' \
-  -string '/Program Files (x86)/Steam/steam.exe' "$CUSTOM_INFO"
-/usr/bin/plutil -replace 'Program Flags' \
-  -string '-applaunch 4704690' "$CUSTOM_INFO"
+  -string '/Program Files (x86)/Steam/steam.exe' "$WRAPPER_INFO"
+/usr/bin/plutil -replace 'Program Flags' -string '' "$WRAPPER_INFO"
 
 /bin/mkdir -p "$(dirname -- "$DESTINATION")"
 /usr/bin/ditto "$TEMPLATE" "$DESTINATION"
-/bin/cp "$CUSTOM_APP/Contents/Resources/Configure.icns" \
-  "$DESTINATION/Contents/Resources/Meccha.icns"
+/bin/cp "$ICON" "$DESTINATION/Contents/Resources/Meccha.icns"
 printf '%s\n' "$WRAPPER" >"$DESTINATION/Contents/Resources/wrapper-path"
 /bin/chmod 755 "$DESTINATION/Contents/MacOS/Meccha Chameleon"
 /usr/bin/codesign --force --deep --sign - "$DESTINATION" >/dev/null

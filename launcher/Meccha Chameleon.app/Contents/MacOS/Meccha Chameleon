@@ -2,11 +2,32 @@
 
 CONTENTS=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 WRAPPER=$(/bin/cat "$CONTENTS/Resources/wrapper-path" 2>/dev/null)
-CUSTOM_EXE="$WRAPPER/Contents/Meccha Chameleon.app/Contents/MacOS/CustomEXE"
+LAUNCHER="$WRAPPER/Contents/MacOS/Sikarugir"
+SHIPPING_EXE="$WRAPPER/Contents/SharedSupport/prefix/drive_c/Program Files (x86)/Steam/steamapps/common/MECCHA CHAMELEON/Chameleon/Binaries/Win64/PenguinHotel-Win64-Shipping.exe"
+STEAM_PATTERN='C:\\Program Files \(x86\)\\Steam\\steam\.exe'
 
-if [ ! -x "$CUSTOM_EXE" ]; then
-  /usr/bin/logger -t meccha-chameleon "Missing Sikarugir launcher: $CUSTOM_EXE"
+if [ ! -x "$LAUNCHER" ] || [ ! -f "$SHIPPING_EXE" ]; then
+  /usr/bin/logger -t meccha-chameleon "Sikarugir launcher or game is missing"
   exit 1
 fi
 
-exec "$CUSTOM_EXE"
+if ! /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1; then
+  /usr/bin/open "$WRAPPER"
+
+  ATTEMPTS=0
+  while ! /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1; do
+    /bin/sleep 1
+    ATTEMPTS=$((ATTEMPTS + 1))
+    if [ "$ATTEMPTS" -ge 60 ]; then
+      /usr/bin/logger -t meccha-chameleon "Steam did not start within 60 seconds"
+      exit 1
+    fi
+  done
+
+  # Give Steam time to finish login and initialize Steamworks on a cold start.
+  /bin/sleep 5
+fi
+
+export SteamAppId=4704690
+export SteamGameId=4704690
+exec "$LAUNCHER" "$SHIPPING_EXE"

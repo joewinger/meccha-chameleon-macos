@@ -30,8 +30,12 @@ Direct3D 12 and Shader Model 6.
 
 - DXMT and DXVK target Direct3D 10/11, so neither fixed this failure.
 - D3DMetal provides the required 64-bit Direct3D 12 to Metal path.
-- The game must be launched through Steam so Steamworks supplies its app
-  context. Starting the shipping executable alone invokes the crash reporter.
+- Steam's normal launch target is a 222 KB Unreal bootstrapper. Under Wine it
+  can incorrectly report that Visual C++ is missing even after Steam installs
+  both VC++ 2022 redistributables successfully.
+- The native launcher starts Steam, waits for it, then runs the real shipping
+  executable with Steam app ID 4704690. This bypasses the faulty prerequisite
+  check while preserving Steamworks and D3DMetal.
 
 ## Install
 
@@ -65,36 +69,27 @@ Use Sikarugir's Install Software flow with Valve's official `SteamSetup.exe`.
 Open the wrapper, sign in normally, and install Meccha Chameleon. This project
 does not copy or store Steam credentials.
 
-### 4. Create Sikarugir's child launcher
+### 4. Install the native launcher
 
-Open the wrapper's Configure app, then choose:
-
-```text
-Tools -> Custom EXE Creator
-```
-
-Use:
-
-```text
-Windows EXE: C:\Program Files (x86)\Steam\steam.exe
-Name to use: Meccha Chameleon
-```
-
-Save it, then run:
+Run:
 
 ```sh
 ./install-launcher.sh
 ```
 
-The installer sets the child launcher's flags to `-applaunch 4704690` and
-creates:
+The installer creates:
 
 ```text
 ~/Applications/Meccha Chameleon.app
 ```
 
+It also restores the main Sikarugir wrapper's target to plain `steam.exe` with
+no game flags. That wrapper remains useful for signing in, updates, and other
+Windows Steam games.
+
 Double-click that app or place it in the Dock. Bun, Node, TypeScript, and a
-Terminal window are not required to play.
+Terminal window are not required to play. On a cold launch, it opens Windows
+Steam first and waits briefly before starting Meccha.
 
 ## Diagnose the installation
 

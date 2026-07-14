@@ -2,12 +2,13 @@
 
 set -u
 
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 WRAPPER=${SIKARUGIR_WRAPPER:-"$HOME/Applications/Sikarugir/Meccha Chameleon Test.app"}
 CONTENTS="$WRAPPER/Contents"
 INFO="$CONTENTS/Info.plist"
-CUSTOM_APP="$CONTENTS/Meccha Chameleon.app"
-CUSTOM_INFO="$CUSTOM_APP/Contents/Info.plist.cexe"
 NATIVE_APP=${MECCHA_APP_DESTINATION:-"$HOME/Applications/Meccha Chameleon.app"}
+NATIVE_LAUNCHER="$NATIVE_APP/Contents/MacOS/Meccha Chameleon"
+TEMPLATE_LAUNCHER="$ROOT/launcher/Meccha Chameleon.app/Contents/MacOS/Meccha Chameleon"
 PREFIX="$CONTENTS/SharedSupport/prefix"
 STEAM="$PREFIX/drive_c/Program Files (x86)/Steam"
 GAME="$STEAM/steamapps/common/MECCHA CHAMELEON"
@@ -48,6 +49,13 @@ check_path "Sikarugir wrapper" "$WRAPPER"
 check_path "Sikarugir launcher" "$CONTENTS/MacOS/Sikarugir"
 check_path "Bundled Wine engine" "$CONTENTS/SharedSupport/wine/version"
 
+if [ "$(plist_value "$INFO" 'Program Name and Path')" = "/Program Files (x86)/Steam/steam.exe" ] &&
+   [ -z "$(plist_value "$INFO" 'Program Flags')" ]; then
+  pass "Wrapper opens Steam without game flags"
+else
+  fail "Wrapper target is not plain Steam"
+fi
+
 if [ "$(plist_value "$INFO" D3DMETAL)" = "1" ]; then
   pass "D3DMetal is enabled"
 else
@@ -75,16 +83,16 @@ fi
 check_path "Steam" "$STEAM/steam.exe"
 check_path "Meccha manifest" "$STEAM/steamapps/appmanifest_4704690.acf"
 check_path "Meccha executable" "$GAME/Chameleon/Binaries/Win64/PenguinHotel-Win64-Shipping.exe"
-check_path "Sikarugir child launcher" "$CUSTOM_APP"
-
-if [ "$(plist_value "$CUSTOM_INFO" 'Program Name and Path')" = "/Program Files (x86)/Steam/steam.exe" ] &&
-   [ "$(plist_value "$CUSTOM_INFO" 'Program Flags')" = "-applaunch 4704690" ]; then
-  pass "Child launcher uses Steam app 4704690"
-else
-  fail "Child launcher is not configured for Steam app 4704690"
-fi
+check_path "VC++ x64 runtime" "$PREFIX/drive_c/windows/system32/vcruntime140.dll"
+check_path "VC++ x64 standard library" "$PREFIX/drive_c/windows/system32/msvcp140.dll"
 
 check_path "Native Meccha app" "$NATIVE_APP"
+
+if /usr/bin/cmp -s "$TEMPLATE_LAUNCHER" "$NATIVE_LAUNCHER"; then
+  pass "Native launcher bypasses the prerequisite bootstrapper"
+else
+  fail "Native launcher is missing or outdated — reinstall it"
+fi
 
 if [ -f "$NATIVE_APP/Contents/Resources/wrapper-path" ] &&
    [ "$(/bin/cat "$NATIVE_APP/Contents/Resources/wrapper-path")" = "$WRAPPER" ]; then
