@@ -1,0 +1,12 @@
+#!/bin/sh
+
+CONTENTS=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+WRAPPER=$(/bin/cat "$CONTENTS/Resources/wrapper-path" 2>/dev/null)
+CUSTOM_EXE="$WRAPPER/Contents/Meccha Chameleon.app/Contents/MacOS/CustomEXE"
+
+if [ ! -x "$CUSTOM_EXE" ]; then
+  /usr/bin/logger -t meccha-chameleon "Missing Sikarugir launcher: $CUSTOM_EXE"
+  exit 1
+fi
+
+exec "$CUSTOM_EXE"
