@@ -91,6 +91,8 @@ Windows Steam games.
 Double-click that app or place it in the Dock. Bun, Node, TypeScript, and a
 Terminal window are not required to play. On a cold launch, it opens Windows
 Steam first and waits for Steam to finish logging in before starting Meccha.
+If Steam was left running after its server session was replaced, the launcher
+restarts that dead wrapper session automatically instead of timing out.
 
 ## Diagnose the installation
 

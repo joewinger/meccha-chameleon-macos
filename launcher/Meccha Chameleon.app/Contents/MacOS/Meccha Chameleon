@@ -20,8 +20,30 @@ steam_logged_on() {
       /usr/bin/grep -q '] \[Logged On,'
 }
 
+steam_session_replaced() {
+  ! steam_logged_on &&
+    /usr/bin/tail -n 20 "$CONNECTION_LOG" 2>/dev/null |
+      /usr/bin/grep -q 'not auto reconnecting due to Session Replaced'
+}
+
 STARTED_STEAM=0
 LOG_LINES=0
+
+if /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1 &&
+   steam_session_replaced; then
+  /usr/bin/logger -t meccha-chameleon "Restarting a replaced Steam session"
+  "$LAUNCHER" WSS-wineserverkill
+
+  ATTEMPTS=0
+  while /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1; do
+    /bin/sleep 1
+    ATTEMPTS=$((ATTEMPTS + 1))
+    if [ "$ATTEMPTS" -ge 30 ]; then
+      /usr/bin/logger -t meccha-chameleon "Stale Steam session did not stop"
+      exit 1
+    fi
+  done
+fi
 
 if ! /usr/bin/pgrep -f "$STEAM_PATTERN" >/dev/null 2>&1; then
   if [ -f "$CONNECTION_LOG" ]; then
